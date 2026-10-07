@@ -159,7 +159,8 @@ struct SimulationView: View {
     
     func calculatePredictedAverage() {
         let currentAvg = networkManager.media
-        let currentCFU = networkManager.currentCfu
+        // The average is weighted on exams with a numeric grade only (pass/fail exams have CFU but no grade).
+        let currentCFU = networkManager.cfuMedia
         
         let selectedCFUDouble = Double(selectedCFU)
         

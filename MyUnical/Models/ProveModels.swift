@@ -17,11 +17,29 @@ struct EsitoFinale: Codable {
     let voto: Double?
     let modValCod: String?
     let tipoGiudCod: String?
+    /// 1 for "30 e lode".
+    let lodeFlg: Int?
 
     enum CodingKeys: String, CodingKey {
         case voto
         case modValCod
         case tipoGiudCod
+        case lodeFlg
+    }
+
+    /// Grade as shown in the transcript: "28", "30L", or the judgement code for pass/fail exams; nil if there is no
+    /// result yet.
+    var testo: String? {
+        switch modValCod {
+        case "V":
+            guard let voto else { return nil }
+            return lodeFlg == 1 ? "\(Int(voto))L" : "\(Int(voto))"
+        case "G":
+            guard let tipoGiudCod, !tipoGiudCod.isEmpty else { return nil }
+            return tipoGiudCod
+        default:
+            return nil
+        }
     }
 
     init(from decoder: Decoder) throws {
@@ -39,6 +57,7 @@ struct EsitoFinale: Codable {
         }
         
         tipoGiudCod = try? container.decode(String.self, forKey: .tipoGiudCod)
+        lodeFlg = try? container.decode(Int.self, forKey: .lodeFlg)
     }
 
     struct ValueCodingKey: CodingKey {

@@ -34,7 +34,7 @@ struct DashboardView: View {
                     
                     HStack(spacing: 20) {
                         DashboardCard(title: NSLocalizedString("Base Laurea", comment: "Base Laurea"), value: String(format: "%.2f", networkManager.baseL), color: .purple)
-                        DashboardCard(title: NSLocalizedString("CFU Rimanenti", comment: "CFU Rimanenti"), value: "\(Int(Double(networkManager.totalCfu)-networkManager.currentCfu))", color: .red)
+                        DashboardCard(title: NSLocalizedString("CFU Rimanenti", comment: "CFU Rimanenti"), value: "\(max(0, Int(Double(networkManager.totalCfu) - networkManager.currentCfu)))", color: .red)
                     }
                     .padding(.horizontal)
                     

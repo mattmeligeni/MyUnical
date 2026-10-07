@@ -153,7 +153,7 @@ struct PrenotaDetailView: View {
                 // await fetchAppelli()
             } catch {
                 isLoading = false
-                alertMessage = "Errore nella prenotazione: \(error.self)"
+                alertMessage = "Errore nella prenotazione: \(error.localizedDescription)"
                 shouldDismiss = false // Do not dismiss on booking error
                 showAlert = true
             }

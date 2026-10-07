@@ -51,6 +51,20 @@ let predefinedColors: [ColorOption] = [
 ]
 
 /// Helper function to get Color from colorName
+extension Weekday {
+    /// Today's weekday, nil on weekends.
+    static var oggi: Weekday? {
+        switch Calendar.current.component(.weekday, from: Date()) {
+        case 2: return .Lunedì
+        case 3: return .Martedì
+        case 4: return .Mercoledì
+        case 5: return .Giovedì
+        case 6: return .Venerdì
+        default: return nil
+        }
+    }
+}
+
 func colorFromName(_ name: String) -> Color {
     predefinedColors.first(where: { $0.colorName == name })?.color ?? .blue
 }
@@ -434,7 +448,9 @@ struct LectureListView: View {
     
     /// Checks if the lecture is currently ongoing
     func isLectureCurrentlyOngoing(_ lecture: Lecture) -> Bool {
-        guard let lectureStartTimeToday = lecture.normalizedStartTime,
+        // Same time on another day is not "now".
+        guard lecture.day == Weekday.oggi,
+              let lectureStartTimeToday = lecture.normalizedStartTime,
               let lectureEndTimeToday = lecture.normalizedEndTime else {
             return false
         }

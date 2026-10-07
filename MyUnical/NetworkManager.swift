@@ -9,6 +9,25 @@ import Foundation
 import Combine
 import SwiftUI
 
+/// Errors shown to the user (in Italian, like the rest of the UI).
+enum NetworkError: LocalizedError {
+    case invalidURL
+    case missingCredentials
+    case invalidMatId
+    case courseNotFound
+    case server(String)
+
+    var errorDescription: String? {
+        switch self {
+        case .invalidURL: return "Indirizzo del servizio non valido."
+        case .missingCredentials: return "Credenziali non trovate: esci ed entra di nuovo."
+        case .invalidMatId: return "Carriera non caricata: riprova dopo l'aggiornamento dei dati."
+        case .courseNotFound: return "Insegnamento non trovato nel libretto."
+        case .server(let message): return message
+        }
+    }
+}
+
 class NetworkManager: ObservableObject {
     static let shared = NetworkManager()
     
@@ -88,10 +107,10 @@ class NetworkManager: ObservableObject {
                         await self.fetchProve(username: username, password: password)
                         await self.fetchInsegnamenti(username: username, password: password)
                         await self.fetchFatture(username: username, password: password)
-                        DispatchQueue.main.async {
+                        await MainActor.run {
+                            self.saveUserData()
                             completion(true)
                         }
-                        self.saveUserData()
                     }
                 } else {
                     completion(false)
@@ -219,38 +238,12 @@ class NetworkManager: ObservableObject {
                 completion(.success(receivedAppelli))
             })
             .store(in: &cancellables)
-        // Define network errors
-        enum NetworkError: Error, LocalizedError {
-            case invalidURL
-            case invalidResponse
-            case missingCredentials
-            
-            var errorDescription: String? {
-                switch self {
-                case .invalidURL:
-                    return "Invalid URL."
-                case .invalidResponse:
-                    return "Invalid response from server."
-                case .missingCredentials:
-                    return "Missing credentials."
-                }
-            }
-        }
     }
     
     func prenotaAppello(cdsId: Int, adId: Int, appId: Int, adDes: String) async throws {
-        enum NetworkError: Error {
-            case invalidURL
-            case missingCredentials
-            case invalidMatId
-            case badServerResponse(String)
-        }
-        
-        var adsceId: Int = 0
-        for riga in self.righe {
-            if riga.adDes == adDes {
-                adsceId = riga.adsceId
-            }
+        // The booking needs the transcript row of the course: without it the server would get adsceId 0.
+        guard let adsceId = righe.first(where: { $0.adDes.caseInsensitiveCompare(adDes) == .orderedSame })?.adsceId else {
+            throw NetworkError.courseNotFound
         }
         
         // Ensure matId is valid
@@ -301,8 +294,7 @@ class NetworkManager: ObservableObject {
             
             // Validate response status code
             if let httpResponse = response as? HTTPURLResponse {
-                if httpResponse.statusCode == 201 {
-                    print("Success")
+                if (200...299).contains(httpResponse.statusCode) {
                     return
                 } else {
                     // Try to parse the error message from the response body
@@ -313,10 +305,10 @@ class NetworkManager: ObservableObject {
                         if let jsonData = dataString.data(using: .utf8),
                            let json = try? JSONSerialization.jsonObject(with: jsonData, options: []) as? [String: Any],
                            let retErrMsg = json["retErrMsg"] as? String {
-                            throw NetworkError.badServerResponse(retErrMsg)
+                            throw NetworkError.server(retErrMsg)
                         }
                     }
-                    throw NetworkError.badServerResponse("Unknown error occurred.")
+                    throw NetworkError.server("Il server ha rifiutato la prenotazione (codice \(httpResponse.statusCode)).")
                 }
             } else {
                 throw URLError(.badServerResponse)
@@ -466,11 +458,16 @@ class NetworkManager: ObservableObject {
         
         do {
             // Perform concurrent network requests
-            async let (proveData, _) = URLSession.shared.data(for: requestProve)
-            async let (righeData, _) = URLSession.shared.data(for: requestRighe)
+            async let proveCall = URLSession.shared.data(for: requestProve)
+            async let righeCall = URLSession.shared.data(for: requestRighe)
             
-            let proveResult = try await proveData
-            let righeResult = try await righeData
+            let (proveResult, proveResponse) = try await proveCall
+            let (righeResult, righeResponse) = try await righeCall
+            for response in [proveResponse, righeResponse] {
+                if let http = response as? HTTPURLResponse, !(200...299).contains(http.statusCode) {
+                    throw URLError(.badServerResponse)
+                }
+            }
             
             // Decode the data
             let prove = try JSONDecoder().decode([Prova].self, from: proveResult)
@@ -488,63 +485,50 @@ class NetworkManager: ObservableObject {
         }
     }
     
+    /// Builds the transcript and the upcoming bookings from the exam attempts.
+    /// - Several attempts can belong to the same course (partial exams, failed attempts): each course counts once,
+    ///   with its most recent graded attempt, so CFU are not added twice.
+    /// - Upcoming attempts are bookings even when they have no result yet.
     private func processGrades(prove: [Prova], righe: [Riga]) {
-        let righeDict = Dictionary(uniqueKeysWithValues: righe.map { ($0.adsceId, $0) })
-        var totalCfu = 0.0
-        var votiArray: [Voto] = []
+        let righeDict = Dictionary(righe.map { ($0.adsceId, $0) }, uniquingKeysWith: { first, _ in first })
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "dd/MM/yyyy"
+        dateFormatter.locale = Locale(identifier: "en_US_POSIX")
+        let today = Calendar.current.startOfDay(for: Date())
+        var votiPerCorso: [Int: Voto] = [:]
         var appelli: [Prenotazioni] = []
         
         for prova in prove {
-            guard let riga = righeDict[prova.adsceId],
-                  let esitoFinale = prova.esitoFinale else { continue }
-            
-            // Determine votoValue based on modValCod
-            let votoValue: String?
-            
-            if let modValCod = esitoFinale.modValCod {
-                if modValCod == "V", let votoDouble = esitoFinale.voto {
-                    votoValue = String(Int(votoDouble))
-                } else if modValCod == "G", let tipoGiudCod = esitoFinale.tipoGiudCod, !tipoGiudCod.isEmpty {
-                    votoValue = tipoGiudCod
-                } else {
-                    votoValue = nil // Invalid or unsupported modValCod
-                }
-            } else {
-                votoValue = nil // modValCod is missing
-            }
-            
+            guard let riga = righeDict[prova.adsceId] else { continue }
             let dateString = String(prova.dataApp.prefix(10))
-            let dateFormatter = DateFormatter() // Inline date formatter
-            dateFormatter.dateFormat = "dd/MM/yyyy" // Match the input format
-
-            if let dateAppello = dateFormatter.date(from: dateString), dateAppello > Date() {
-                let appello = Prenotazioni(insegnamento: riga.adDes, dataAppello: dateString)
-                appelli.append(appello)
+            let dateAppello = dateFormatter.date(from: dateString)
+            
+            if let dateAppello, dateAppello >= today, prova.esitoFinale?.modValCod == nil {
+                appelli.append(Prenotazioni(insegnamento: riga.adDes, dataAppello: dateString))
             }
-           
             
-            // Skip entries where votoValue is nil
-            guard let validVoto = votoValue else { continue }
-            
-            totalCfu += riga.peso
-            //let dateString = String(prova.dataApp.prefix(10))
-            
-            let votoStruct = Voto(
-                insegnamento: riga.adDes,
-                voto: validVoto,
-                cfu: Int(riga.peso),
-                dataAppello: dateString,
-                date: dateFormatter.date(from: dateString) ?? Date()
-            )
-            votiArray.append(votoStruct)
+            guard let esito = prova.esitoFinale, let votoValue = esito.testo else { continue }
+            let voto = Voto(insegnamento: riga.adDes, voto: votoValue, cfu: Int(riga.peso), dataAppello: dateString,
+                            date: dateAppello ?? Date())
+            if let esistente = votiPerCorso[prova.adsceId], esistente.date > voto.date { continue }
+            votiPerCorso[prova.adsceId] = voto
         }
+        
+        let votiArray = votiPerCorso.values.sorted { $0.date > $1.date }
+        let totalCfu = votiPerCorso.keys.compactMap { righeDict[$0]?.peso }.reduce(0, +)
+        let prenotazioni = appelli.sorted { ($0.date ?? .distantFuture) < ($1.date ?? .distantFuture) }
         
         // Update @Published properties on the main thread
         DispatchQueue.main.async {
             self.currentCfu = totalCfu
-            self.voti = votiArray.sorted(by: { $0.date > $1.date })
-            self.prenotazioni = appelli
+            self.voti = votiArray
+            self.prenotazioni = prenotazioni
         }
+    }
+    
+    /// CFU of the exams with a numeric grade: the weights of the average (pass/fail exams don't count).
+    var cfuMedia: Double {
+        Double(voti.filter { Int($0.voto.prefix(2)) != nil }.reduce(0) { $0 + $1.cfu })
     }
     
     @MainActor
@@ -553,6 +537,9 @@ class NetworkManager: ObservableObject {
         self.cdsDes = ""
         self.cdsId = 0
         self.matId = 0
+        self.matricola = ""
+        self.userName = ""
+        self.sex = ""
         self.stuId = 0
         self.persId = 0
         self.aaId = 0
@@ -563,14 +550,15 @@ class NetworkManager: ObservableObject {
         self.fatture.removeAll()
         self.insegnamenti.removeAll()
         self.voti.removeAll()
+        self.prenotazioni.removeAll()
+        self.righe.removeAll()
         // Cancel any ongoing subscriptions
         self.cancellables.forEach { $0.cancel() }
         self.cancellables.removeAll()
         
-        // Remove cached data
-        DataPersistence.shared.save([Voto](), to: "voti.json")
-        DataPersistence.shared.save("", to: "userData.json")
-        //DataPersistence.shared.save([Lecture](), to: "schedule.json")
+        // Remove cached personal data (the timetable is the user's own and stays)
+        DataPersistence.shared.delete("voti.json")
+        DataPersistence.shared.delete("userData.json")
     }
     
     /// Saves the current user data to local storage.

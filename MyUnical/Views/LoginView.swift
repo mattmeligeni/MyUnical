@@ -130,6 +130,9 @@ struct LoginView: View {
                     if success {
                         self.appState.isLoggedIn = true
                     } else {
+                        // Wrong credentials must not stay in the Keychain (the silent refresh would reuse them).
+                        KeychainHelper.shared.delete(service: keychainService, account: "username")
+                        KeychainHelper.shared.delete(service: keychainService, account: "password")
                         self.loginFailed = true
                     }
                 }

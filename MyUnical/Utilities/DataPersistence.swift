@@ -40,6 +40,11 @@ class DataPersistence {
             return nil
         }
     }
+    /// Deletes the file, if present.
+    func delete(_ filename: String) {
+        try? FileManager.default.removeItem(at: getDocumentsDirectory().appendingPathComponent(filename))
+    }
+    
     /// Returns the URL to the app's Documents directory.
     private func getDocumentsDirectory() -> URL {
         FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
