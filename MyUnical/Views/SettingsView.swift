@@ -84,7 +84,7 @@ struct SettingsView: View {
     }
     
     private func email() {
-        let emailRecipient = "myunical@mattiameligeni.it"
+        let emailRecipient = "info@mattiameligeni.com"
         let emailSubject = "Segnalazione da MyUnical App"
         let emailBody = """
         Ciao,

@@ -1,126 +1,69 @@
-# MyUnical
+**English** | [Italiano](README.it.md)
 
-MyUnical is a modern and intuitive iOS application designed to help students at the University of Calabria (Unical) manage their academic information seamlessly. The app provides students with real-time access to their grades, academic progress, and allows them to simulate future grades to predict their academic standing.
+<p align="center">
+  <img src="MyUnical/Assets.xcassets/AppIcon.appiconset/4-01.png" width="110" alt="MyUnical">
+</p>
 
-## Table of Contents
+<h1 align="center">MyUnical</h1>
 
-- [Features](#features)
-- [Requirements](#requirements)
-- [Installation](#installation)
-- [Usage](#usage)
-- [Privacy and Data Security](#privacy-and-data-security)
-- [License](#license)
-- [Acknowledgements](#acknowledgements)
-- [Contact](#contact)
+<p align="center">
+  <b>A native iOS companion for students of the University of Calabria (Unical).</b><br>
+  Grades, average and credits, exam booking, fees and weekly timetable on top of the university's Esse3 REST API.
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/iOS-17%2B-black?logo=apple" alt="iOS 17+">
+  <img src="https://img.shields.io/badge/Swift-5-F05138?logo=swift&logoColor=white" alt="Swift 5">
+  <img src="https://img.shields.io/badge/UI-SwiftUI-0A84FF" alt="SwiftUI">
+  <img src="https://img.shields.io/badge/dependencies-none-success" alt="No dependencies">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-PolyForm%20Strict%201.0.0-lightgrey" alt="License"></a>
+</p>
+
+> [!NOTE]
+> Independent, unofficial project, not affiliated with the University of Calabria. The screenshots below contain no
+> personal data.
+
+<p align="center">
+  <img src="docs/screenshots/login.png" width="230" alt="Sign-in">
+  <img src="docs/screenshots/simulatore.png" width="230" alt="Grade simulator">
+</p>
 
 ## Features
 
-- **User Authentication**
-  - Secure login using Unical credentials.
-  - Credentials are safely stored in the iOS Keychain.
+- **Sign-in with university credentials**, stored only in the iOS Keychain.
+- **Dashboard** with weighted average, graduation base score, earned and missing credits (CFU) and latest grades.
+- **Grade simulator**: how a future grade and its credits change the average.
+- **Transcript (Libretto)** with search, and **exam booking** with date, place, time, committee chair, participants
+  and notes.
+- **Fees**: payment status, invoices with payment code, amounts and dates, payment by QR code with instructions
+  for each method.
+- **Weekly timetable**: lessons per day with overlap detection, live "now" filter, custom lessons with colours.
+- **Offline first**: data cached as JSON and shown without a connection; silent refresh at launch when online.
+- **Localised** in Italian, English and Spanish.
 
-- **Dashboard**
-  - Personalized welcome message.
-  - Displays current GPA (Media), a degree base calculated on the latter, and the earned and remaining credits (CFU).
-  - Shows recent grades for quick overview.
-  - Access to a simulation tool for predicting GPA based on potential future grades.
+## Architecture
 
--  **Simulation Tool**
-   - Simulate potential grades to see their impact on GPA.
-   - Select grade and corresponding credits for accurate predictions.
+- **SwiftUI**, no third-party dependencies.
+- **`NetworkManager`**: Esse3 REST client (authentication, career, grades, averages, exam sessions, bookings,
+  invoices) with `async`/`await`.
+- **`KeychainHelper`** for credentials, **`DataPersistence`** for the JSON cache, **`NetworkMonitor`** for the
+  offline state.
+- Models in `Models/`, screens in `Views/`.
 
-- **Grades View (Libretto)**
-  - Comprehensive list of all grades.
-  - Search functionality to filter courses.
-  - Detailed view of each grade, including course name, credits, exam date, and score.
-  - Section through which book an exam, providing all the informations about it (date, place, hour, chairman, partecipants and notes).
+The Python prototype used to explore the Esse3 API before building the app is in
+[unical-esse3-client](https://github.com/mattmeligeni/unical-esse3-client).
 
-- **Fees**
-   - Payments Status.
-   - Show invoices list with payment code, the amount, dates (due, payment and issue) and a description.
-   - Payment functionality through QR code (with instructions).
+## Build
 
-- **Weekly Schedule**
-   - Comprehensivelist of all lectures.
-   - Search functionality to filter the lectures.
-   - Access to the schedule fot each day providing possible overlaps.
-   - Real time update for the schedule of the day.
-   - Add new lectures putting a title, day, hours, place, notes and a color for differentiation.
-   - Filtering function for ongoing lectures.
-
-- **Settings**
-  - Manage app settings and preferences.
-  - Logout functionality.
-  - Reload functionality.
-  - Information about the user.
-  - Donation section.
-  - Reporting section.
-
-- **Offline Support**
-  - Data caching ensures access to grades and academic information without an internet connection.
-  - Automatically loads the last fetched data when offline.
-  
-- **Data Synchronization**
-  - Silent data fetching upon app launch to update cached data when internet connectivity is available.
-
-
-## Requirements
-
-- iOS 17.0 or later
-- Xcode 15.0 or later
-- Swift 5.3 or later
-
-## Installation
-
-1. **Clone the Repository**
-
-   Clone the repository to your local machine using Git.
-
-2. **Open the Project**
-
-   Navigate to the project directory and open `MyUnical.xcodeproj` with Xcode.
-
-3. **Install Dependencies**
-
-   Ensure that all dependencies are installed. The project uses native SwiftUI components, so no external dependencies are required.
-
-4. **Run the App**
-
-   Select the desired simulator or your connected iOS device and click the **Run** button in Xcode.
-
-## Usage
-
-1. **Login**
-
-   - Launch the app.
-   - Enter your Unical credentials.
-   - Credentials are securely stored using Keychain services.
-
-2. **API**
-
-   - The app shows data retrieved from Unical's Esse3 REST Api service.
-   
-
-
-## Privacy and Data Security
-
-- **Credential Storage**: Your credentials are stored securely using the iOS Keychain and are never shared with third parties.
-- **Data Fetching**: The app communicates directly with Unical's official APIs to fetch your academic data.
-- **Personal Data**: Personal information such as your name and academic records are used solely within the app to provide you with accurate and personalized information.
-- **Data Caching**: Fetched data is cached locally in JSON format, ensuring access even without an internet connection.
+Open `MyUnical.xcodeproj` with Xcode 15 or later and run on a simulator or device (iOS 17+). A Unical account is
+required to sign in.
 
 ## License
 
-This project is licensed under the **MyUnical Non-Commercial License**. See the [LICENSE](LICENSE.md) file for details.
+Source-available under the [PolyForm Strict License 1.0.0](LICENSE): you may read the code and run it for
+non-commercial purposes; you may not modify, redistribute or publish it without written permission. The name and
+the icon are reserved.
 
-## Acknowledgements
+---
 
-- **University of Calabria (Unical)**: For providing the APIs to access student data.
-
-## Contact
-
-For any questions or suggestions, please contact:
-
-- **Name**: Mattia Meligeni
-- **Email**: [myunical@mattiameligeni.it](mailto:myunical@mattiameligeni.it)
-- **GitHub**: [github.com/MattGXR](https://github.com/MattGXR)
+<sub>© 2024-2026 [Mattia Meligeni](https://mattiameligeni.com) · Not affiliated with the University of Calabria.</sub>
