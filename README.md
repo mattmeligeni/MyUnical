@@ -50,9 +50,6 @@
   offline state.
 - Models in `Models/`, screens in `Views/`.
 
-The Python prototype used to explore the Esse3 API before building the app is in
-[unical-esse3-client](https://github.com/mattmeligeni/unical-esse3-client).
-
 ## Build
 
 Open `MyUnical.xcodeproj` with Xcode 15 or later and run on a simulator or device (iOS 17+). A Unical account is

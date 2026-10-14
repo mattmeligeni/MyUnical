@@ -50,9 +50,6 @@
   stato offline.
 - Modelli in `Models/`, schermate in `Views/`.
 
-Il prototipo Python usato per esplorare l'API Esse3 prima dell'app è in
-[unical-esse3-client](https://github.com/mattmeligeni/unical-esse3-client).
-
 ## Compilazione
 
 Apri `MyUnical.xcodeproj` con Xcode 15 o successivo ed esegui su simulatore o dispositivo (iOS 17+). Per accedere
